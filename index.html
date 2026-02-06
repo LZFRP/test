@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>储罐尺寸及介质重量计算</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        /* 新增密码弹窗样式 */
+        .password-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .password-container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+            animation: modalPop 0.3s ease-out;
+        }
+        @keyframes modalPop {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .password-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .password-header h2 {
+            color: #1a2z7e;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .password-header p {
+            color: #6c757d;
+            margin: 8px 0 0;
+            font-size: 14px;
+        }
+        .password-input-group {
+            margin-bottom: 25px;
+        }
+        .password-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 15px;
+        }
+        .password-input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+        .password-input:focus {
+            outline: none;
+            border-color: #1976d2;
+            box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.15);
+        }
+        .password-error {
+            color: #dc3545;
+            font-size: 13px;
+            margin-top: 8px;
+            display: none;
+            animation: shake 0.3s ease;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .password-button {
+            width: 100%;
+            padding: 14px;
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .password-button:hover {
+            background-color: #1565c0;
+        }
+        .password-button:active {
+            transform: scale(0.98);
+        }
+        .lock-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+        }
+        .lock-screen h1 {
+            color: #d32f2f;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        .lock-screen p {
+            color: #6c757d;
+            font-size: 18px;
+        }
+        .lock-icon {
+            font-size: 80px;
+            color: #d32f2f;
+            margin-bottom: 30px;
+        }
+
+        /* 原有样式保持不变 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; padding: 20px; background-color: #f0f2f5; color: #333; }
+        .container { display: flex; flex-wrap: wrap; gap: 30px; background: white; padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 900px; width: 100%; }
+        .controls, .diagram-section { flex: 1; min-width: 350px; }
+        h1, h2 { border-bottom: 2px solid #e8eaf6; padding-bottom: 10px; margin-top: 0; color: #1a2z7e; }
+        .control-group { display: flex; flex-direction: column; margin-bottom: 15px; position: relative; }
+        label { font-weight: 600; margin-bottom: 8px; }
+        label sub { font-weight: 500; font-size: 0.9em; }
+        input, select { padding: 10px; border: 1px solid #b0bec5; border-radius: 8px; font-size: 16px; background-color: #fcfdff; transition: all 0.2s ease-in-out; box-shadow: 0 2px 4px rgba(25, 118, 210, 0.15); }
+        input:focus, select:focus { outline: none; border-color: #1976d2; background-color: #fff; box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.3); }
+        input[readonly] { background-color: #eceff1; color: #546e7a; cursor: not-allowed; box-shadow: none; }
+        hr { border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
+        .results-block h3 { font-size: 18px; border-bottom: 1px solid #90caf9; padding-bottom: 8px; margin-top: 10px; margin-bottom: 10px; color: #0d47a1; }
+        .results-block { background-color: #eef7ff; border: 1px solid #bbdefb; border-radius: 8px; padding: 15px 20px; margin-top: 20px;}
+        .results-block .result-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border: none; gap: 15px; }
+        .results-block .result-value span { font-weight: 500; font-size: 16px; color: #1e3a5f; }
+        .results-block .result-value strong { font-family: monospace; font-size: 18px; color: #1565c0; }
+        .note { font-size: 12px; color: #6c757d; text-align: right; margin-top: 2px; }
+        #weight-section .result-value span, #process-volume-section .result-value span, #geometry-total-volume .result-value span { font-weight: 600; font-size: 18px; }
+        #totalVolume, #effectiveVolume, #emptyWeight, #operatingWeight, #fullWeight { font-size: 26px; font-weight: bold; }
+        #totalVolume { color: #d32f2f; } #effectiveVolume { color: #1976d2; }
+        #operatingWeight { color: #2e7d32; } #fullWeight { color: #c62828; } #emptyWeight { color: #37474f; }
+        .options-group { border-left: 3px solid #3f51b5; padding-left: 15px; margin-top: 10px; }
+        .radio-group label { margin-right: 20px; font-weight: normal; user-select: none; }
+        #tankSvg { border: 1px dashed #aaa; width: 100%; aspect-ratio: 3 / 4; background-color: #fafafa; }
+        .dimension-text, .angle-text { fill: #c51162; font-size: 14px; font-family: monospace; font-weight: 500; text-anchor: middle;}
+        .angle-arc { stroke: #c51162; stroke-width: 1.5; fill: none; }
+        .support-leg, .support-skirt { stroke: #e53935; stroke-width: 2; fill: url(#hatch); stroke: #616161;}
+        .angle-note { font-size: 12px; color: #424242; font-weight: 500; margin-top: 5px; }
+        .formula-col { text-align: left; min-width: 160px; font-size: 13px; color: #757575; font-family: "Times New Roman", Times, serif; }
+        .formula-col i { font-style: normal; }
+        #exportButton { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; color: white; background-color: #1976d2; border: none; border-radius: 8px; cursor: pointer; margin-top: 25px; transition: background-color 0.2s; }
+        #exportButton:hover { background-color: #1565c0; }
+        #exportButton:disabled { background-color: #9e9e9e; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <!-- 新增密码弹窗 DOM 结构 -->
+    <div id="passwordModal" class="password-modal">
+        <div class="password-container">
+            <div class="password-header">
+                <h2>储罐计算系统</h2>
+                <p>请输入访问密码以继续使用</p>
+            </div>
+            <div class="password-input-group">
+                <label for="passwordInput">访问密码</label>
+                <input type="password" id="passwordInput" class="password-input" placeholder="请输入密码">
+                <div id="passwordError" class="password-error">密码错误，请重新输入！</div>
+            </div>
+            <button id="passwordSubmit" class="password-button">验证密码</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <h1>储罐参数输入</h1>
+            <div class="control-group"><label for="diameter">公称直径 (DN) (mm)</label><input type="number" id="diameter" value="0" step="100"></div>
+            <div class="control-group"><label for="cylHeight">筒体高度 (H<sub>s</sub>) (mm)</label><input type="number" id="cylHeight" value="0" step="100"></div><hr>
+            <div class="control-group"><label for="topHeadType">封头类型</label><select id="topHeadType"><option value="ellipsoidal" selected>椭球封头</option><option value="conical">锥形封头</option><option value="flat">平封头</option></select></div>
+            <div id="topHeadHeightGroup" class="control-group"><label for="topHeadHeight">封头高度 (H<sub>t</sub>) (mm)</label><input type="number" id="topHeadHeight" value="0"></div>
+            <div id="topConicalOptions" class="options-group" style="display: none;"><div class="radio-group"><label><input type="radio" name="topConicalInputMode" value="height" checked> 按高度输入</label><label><input type="radio" name="topConicalInputMode" value="angle"> 按角度输入</label></div><div id="topHeadAngleGroup" class="control-group" style="display: none;"><label for="topHeadAngle">锥顶半角 (α) (°)</label><input type="number" id="topHeadAngle" value="45" step="5" min="1" max="90"></div></div><hr>
+            <div class="control-group"><label for="bottomHeadType">封底类型</label><select id="bottomHeadType"><option value="ellipsoidal">椭球封底</option><option value="conical">锥形封底</option><option value="flat" selected>平封底</option></select></div>
+            <div id="bottomHeadHeightGroup" class="control-group"><label for="bottomHeadHeight">封底高度 (H<sub>b</sub>) (mm)</label><input type="number" id="bottomHeadHeight" value="0"></div>
+            <div id="bottomConicalOptions" class="options-group" style="display: none;">
+                <div class="radio-group"><label><input type="radio" name="bottomConicalInputMode" value="height" checked> 按高度输入</label><label><input type="radio" name="bottomConicalInputMode" value="angle"> 按角度输入</label></div>
+                <div id="bottomHeadAngleGroup" class="control-group" style="display: none;">
+                    <label for="bottomHeadAngle">锥顶半角 (α) (°)</label><input type="number" id="bottomHeadAngle" value="45" step="5" min="1" max="90"><div class="angle-note">标准要求：α ≤ 60°</div></div>
+            </div>
+             <div id="flatBottomOptions" class="options-group" style="display: none;">
+                <div class="radio-group"><label><input type="checkbox" id="addFillCheck"> 添加内部填充</label></div>
+                <div id="fillParameters" style="display: none;">
+                    <div class="control-group"><label for="fillType">填充类型</label><select id="fillType"><option value="sloped">内斜底填充</option><option value="v-shape">V型填充</option></select></div>
+                    <div id="slopeFillGroup"><div class="control-group"><label for="slopeFillMin">最低点高度 (h<sub>min</sub>)</label><input type="number" id="slopeFillMin" value="50"></div><div class="control-group"><label for="slopeFillMax">最高点高度 (h<sub>max</sub>)</label><input type="number" id="slopeFillMax" value="200"></div></div>
+                    <div id="vShapeFillGroup" style="display: none;"><div class="control-group"><label for="vFillEdge">边缘高度 (h<sub>e</sub>)</label><input type="number" id="vFillEdge" value="150"></div><div class="control-group"><label for="vFillCenter">中心高度 (h<sub>c</sub>)</label><input type="number" id="vFillCenter" value="0"></div></div>
+                </div>
+            </div>
+             <div id="supportOptions" class="options-group" style="display: none;">
+                <div class="radio-group"><label><input type="checkbox" id="addSupportCheck"> 添加支座</label></div>
+                <div id="supportParameters" style="display: none;">
+                    <div class="control-group"><label for="supportType">支座类型</label><select id="supportType"><option value="legs">支腿</option><option value="skirt">裙座</option></select></div>
+                    <div class="control-group"><label for="supportHeight">支座高度 (H<sub>sup</sub>)</label><input type="number" id="supportHeight" value="1000"></div>
+                </div>
+            </div>
+            <hr>
+            <div class="control-group"><label for="emptyWeightInput">空罐重量 (kg)</label><input type="number" id="emptyWeightInput" value="0" step="100"></div>
+            <div class="control-group"><label for="mediumDensity">介质密度 (kg/m³)</label><input type="number" id="mediumDensity" value="1200" step="50"></div>
+            <div class="control-group"><label><input type="checkbox" id="addRailingCheck"> 添加顶部护栏</label></div>
+            <div class="control-group"><label><input type="checkbox" id="addLadderCheck"> 添加爬梯</label></div>
+
+            <div id="process-volume-section" class="results-block">
+                <h3>工艺体积计算</h3>
+                <div class="result-item"><div class="result-row"><div class="result-value"><span>有效体积:</span><strong id="effectiveVolume">0.00 m³</strong></div></div><div class="note" id="effectiveVolumeNote">V<sub>有效</sub> = V<sub>筒体</sub> - V<sub>填充物</sub></div></div>
+            </div>
+            <div class="results-block" id="geometry-section-placeholder"></div>
+            <div id="weight-section" class="results-block">
+                 <h3>设备重量计算</h3>
+                <div class="result-item"><div class="result-value"><span>空罐重量:</span><strong id="emptyWeight">0 kg</strong></div></div>
+                <div class="result-item"><div class="result-value"><span>运行重量:</span><strong id="operatingWeight">0 kg</strong></div></div>
+                <div class="result-item"><div class="result-value"><span>满水重量:</span><strong id="fullWeight">0 kg</strong></div></div>
+            </div>
+            <button id="exportButton" disabled>导出为 Excel (.xlsx)</button>
+        </div>
+        <div class="diagram-section"><h2>储罐示意图</h2><svg id="tankSvg" viewBox="0 0 300 400"></svg></div>
+    </div>
+  
+<script>
+    // ########## 访问密码 - 可修改 ##########
+    const ALLOW_PASSWORD = "cug123456";
+    // #######################################
+    let isAuthorized = false;
+
+    // 重构密码验证逻辑 - 替换原生prompt为美观的弹窗
+    window.onload = function() {
+        initPasswordModal(); // 初始化密码弹窗
+    };
+
+    // 初始化密码弹窗
+    function initPasswordModal() {
+        const modal = document.getElementById('passwordModal');
+        const passwordInput = document.getElementById('passwordInput');
+        const passwordSubmit = document.getElementById('passwordSubmit');
+        const passwordError = document.getElementById('passwordError');
+        let errorCount = 0; // 错误次数统计
+
+        // 密码验证函数
+        function validatePassword() {
+            const inputPwd = passwordInput.value.trim();
+            
+            if (inputPwd === ALLOW_PASSWORD) {
+                // 密码正确，隐藏弹窗，初始化程序
+                modal.style.display = 'none';
+                isAuthorized = true;
+                initializeConicalDefaults();
+                update(null);
+            } else {
+                // 密码错误，显示错误提示
+                errorCount++;
+                passwordError.style.display = 'block';
+                passwordInput.focus();
+                passwordInput.select();
+                
+                // 错误次数超过3次，直接锁死
+                if (errorCount >= 3) {
+                    lockScreen();
+                    return;
+                }
+            }
+        }
+
+        // 锁死页面函数
+        function lockScreen() {
+            modal.style.display = 'none';
+            // 创建锁死页面
+            const lockDiv = document.createElement('div');
+            lockDiv.className = 'lock-screen';
+            lockDiv.innerHTML = `
+                <div class="lock-icon">🔒</div>
+                <h1>访问被拒绝</h1>
+                <p>密码错误次数过多，你没有权限使用该程序！</p>
+            `;
+            document.body.appendChild(lockDiv);
+            document.body.style.overflow = 'hidden'; // 禁止滚动
+        }
+
+        // 绑定提交按钮点击事件
+        passwordSubmit.addEventListener('click', validatePassword);
+        
+        // 绑定回车提交
+        passwordInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                validatePassword();
+            }
+        });
+
+        // 初始聚焦到密码输入框
+        passwordInput.focus();
+    }
+
+    const el = new Proxy({}, { get: (_, id) => document.getElementById(id) });
+    let lastExportData = null;
+    
+    const radToDeg = rad => rad * 180 / Math.PI;
+    const degToRad = deg => deg * Math.PI / 180;
+    const ns = 'http://www.w3.org/2000/svg';
+    function calculateHead(D, h, type) { if (!isAuthorized) return {volume:0,area:0,h:0}; if (D <= 0 || h < 0) type = 'flat'; if (type === 'flat') h = 0; const R = D / 2; let volume = 0, area = 0; switch (type) { case 'ellipsoidal': volume = (2 / 3) * Math.PI * R * R * h; if (R > h && h > 0) { const e = Math.sqrt(1 - (h * h) / (R * R)); area = Math.PI * R * R * (1 + ((1 - e * e) / e) * Math.atanh(e)); } else if (h > 0) { area = 2 * Math.PI * ((h * h + R * R) / (2 * h)) * h; } else { area = Math.PI * R * R; } break; case 'conical': volume = (1 / 3) * Math.PI * R * R * h; area = Math.PI * R * Math.sqrt(R * R + h * h); break; case 'flat': area = Math.PI * R*R; break; } return { volume, area, h }; }
+    function initializeConicalDefaults() { if (!isAuthorized) return; const R_mm = (parseFloat(el.diameter.value) || 0) / 2; if (R_mm <= 0) return; const h_top = parseFloat(el.topHeadHeight.value) || 0; if (h_top > 0) { el.topHeadAngle.value = radToDeg(Math.atan(R_mm / h_top)).toFixed(1); } const angle_bottom = parseFloat(el.bottomHeadAngle.value) || 0; if (angle_bottom > 0) { el.bottomHeadHeight.value = (R_mm / Math.tan(degToRad(angle_bottom))).toFixed(0); } }
+
+    function drawTankDiagram(targetSvg, params, canvasSize, isForExport = false) { if (!isAuthorized) return;
+        targetSvg.innerHTML = '';
+        const { D_mm, H_cyl_mm, h_top_mm, h_bottom_mm, h_support_mm, fillDataForExport } = params.geometry;
+        const { topHeadType, bottomHeadType, topHeadAngle, bottomHeadAngle, supportType, addSupportCheck, addRailingCheck, addLadderCheck } = params.ui;
+
+        const totalH_mm_with_support = H_cyl_mm + h_top_mm + h_bottom_mm + h_support_mm; 
+        
+        const canvasW = canvasSize.width;
+        const canvasH = canvasSize.height;
+        const svgMargin = isForExport ? 90 : 60;
+        
+        const scale = Math.min((canvasW - svgMargin * 2) / Math.max(D_mm, 1), (canvasH - svgMargin * 2) / Math.max(totalH_mm_with_support, 1));
+        const s = val => val * scale;
+        
+        const sR = s(D_mm / 2), sH_cyl = s(H_cyl_mm), sH_top = s(h_top_mm), sH_bottom = s(h_bottom_mm), sH_support = s(h_support_mm);
+        const sTotalH_tank = sH_top + sH_cyl + sH_bottom;
+        const sTotalH_diagram = sTotalH_tank + sH_support;
+        
+        const verticalOffset = 25; 
+        const cx = canvasW / 2, cy = canvasH / 2; 
+        const y_top_edge = (cy - sTotalH_diagram / 2) + verticalOffset;
+        
+        const y_mid1 = y_top_edge + sH_top;
+        const y_mid2 = y_mid1 + sH_cyl;
+        const y_bot_head_tip = y_mid2 + sH_bottom;
+        const y_support_bottom = y_mid2 + sH_support;
+        const x1 = cx - sR, x2 = cx + sR;
+        
+        const createEl = (tag, attrs) => { const e = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); targetSvg.appendChild(e); return e; };
+        
+        const defs=createEl('defs',{});
+        const pattern=createEl('pattern',{id:'hatch-pattern', patternUnits:'userSpaceOnUse', width:'8', height:'8'});
+        pattern.innerHTML = `<path d="M-2,2 l4,-4 M0,8 l8,-8 M6,10 l4,-4" stroke="#616161" stroke-width="1"/>`;
+        defs.appendChild(pattern);
+
+        if (addSupportCheck && h_support_mm > 0) {
+            const y_support_top = y_mid2;
+            const y_support_bot = y_support_top + sH_support;
+            if (supportType === 'skirt') { createEl('path',{d:`M ${x1} ${y_support_top} V ${y_support_bot} H ${x2} V ${y_support_top}`, class:'support-skirt', fill:'url(#hatch-pattern)', stroke:'#616161'});} 
+            else { const legWidth = sR * 0.2; createEl('rect',{x:x1, y:y_support_top, width:legWidth, height:sH_support, class:'support-leg', fill:'url(#hatch-pattern)', stroke:'#616161'}); createEl('rect',{x:x2-legWidth, y:y_support_top, width:legWidth, height:sH_support, class:'support-leg', fill:'url(#hatch-pattern)', stroke:'#616161'}); }
+        }
+        
+        let path = '';
+        if (topHeadType === 'ellipsoidal' && sH_top > 0) path += `M${x1},${y_mid1} A${sR},${sH_top} 0 0 1 ${x2},${y_mid1}`;
+        else if (topHeadType === 'conical') path += `M${x1},${y_mid1} L${cx},${y_top_edge} L${x2},${y_mid1}`;
+        path += ` M${x1},${y_mid1} L${x2},${y_mid1} M${x1},${y_mid1} V${y_mid2} M${x2},${y_mid1} V${y_mid2} M${x1},${y_mid2} L${x2},${y_mid2}`;
+        if(bottomHeadType !== 'flat'){
+            if (bottomHeadType === 'ellipsoidal' && sH_bottom > 0) path += `M${x1},${y_mid2} A${sR},${sH_bottom} 0 0 0 ${x2},${y_mid2}`;
+            else if (bottomHeadType === 'conical' && sH_bottom > 0) path += `M${x1},${y_mid2} L${cx},${y_bot_head_tip} L${x2},${y_mid2}`;
+        }
+        
+        if(bottomHeadType === 'flat' && fillDataForExport.active){
+            const fillPath=createEl('path',{fill:'url(#hatch-pattern)',stroke:'#616161','stroke-width':'1'});
+            if(fillDataForExport.type==='sloped'){
+                const y_fill_left=y_mid2-s(fillDataForExport.h_min_mm);
+                const y_fill_right=y_mid2-s(fillDataForExport.h_max_mm);
+                fillPath.setAttribute('d',`M ${x1} ${y_mid2} L ${x1} ${y_fill_left} L ${x2} ${y_fill_right} L ${x2} ${y_mid2} Z`);
+            } else {
+                const y_fill_edge=y_mid2-s(fillDataForExport.h_edge_mm);
+                const y_fill_center=y_mid2-s(fillDataForExport.h_center_mm);
+                fillPath.setAttribute('d',`M ${x1} ${y_mid2} L ${x1} ${y_fill_edge} L ${cx} ${y_fill_center} L ${x2} ${y_fill_edge} L ${x2} ${y_mid2} Z`);
+            }
+        }
+        createEl('path', {d:path, stroke:'#1a237e', 'stroke-width':'1.5', fill:'none'});
+        
+        if (addRailingCheck) {
+            const railingHeight_mm = 1300; 
+            const sRailingHeight = s(railingHeight_mm);
+            const railingTopY = y_mid1 - sRailingHeight;
+            const railingStyle = { stroke: '#455a64', 'stroke-width': 1.5 };
+            createEl('path', { d: `M ${x1} ${y_mid1} V ${railingTopY} H ${x2} V ${y_mid1}`, ...railingStyle, fill: 'none' });
+            const innerRailY1 = y_mid1 - sRailingHeight / 3;
+            const innerRailY2 = y_mid1 - sRailingHeight * 2 / 3;
+            createEl('path', { d: `M ${x1} ${innerRailY1} H ${x2}`, ...railingStyle });
+            createEl('path', { d: `M ${x1} ${innerRailY2} H ${x2}`, ...railingStyle });
+            const numInnerPosts = 4;
+            const segmentWidth = (x2 - x1) / (numInnerPosts + 1);
+            for (let i = 1; i <= numInnerPosts; i++) {
+                const postX = x1 + i * segmentWidth;
+                createEl('path', { d: `M ${postX} ${y_mid1} V ${railingTopY}`, ...railingStyle });
+            }
+        }
+
+        if (addLadderCheck) {
+            const ladderWidth = 12; const ladderOffset = 5;
+            const ladderX = x2 + ladderOffset;
+            const ladderTop = y_mid1; const ladderBottom = addSupportCheck ? y_support_bottom : y_mid2;
+            createEl('path', { d: `M ${ladderX} ${ladderTop} V ${ladderBottom} M ${ladderX + ladderWidth} ${ladderTop} V ${ladderBottom}`, stroke: '#455a64', 'stroke-width': 1.5 });
+            for (let y = ladderTop + 10; y < ladderBottom; y += 15) {
+                createEl('path', { d: `M ${ladderX} ${y} H ${ladderX + ladderWidth}`, stroke: '#455a64', 'stroke-width': 1.5 });
+            }
+        }
+        
+        const addLabel=(x,y,label,attrs={})=>{
+            const fontSize = isForExport ? 14 : 14; 
+            const t=createEl('text',{class:'dimension-text',x,y, ...attrs, 'font-size': `${fontSize}px`});
+            const e=label.match(/^(.*?)_(\w+)?(=.*)$/);
+            if(e){
+                const[,l,a,c]=e;
+                const s=(t,d={})=>{const r=createEl('tspan',d);r.textContent=t;return r;};
+                t.appendChild(s(l));
+                if(a)t.appendChild(s(a,{'baseline-shift':'sub','font-size':'0.85em'}));
+                t.appendChild(s(c));
+            } else {
+                t.textContent=label;
+            }
+        };
+
+        const drawAngleMarker=(vX,vY,angle,isTop)=>{if(!isAuthorized)return;if(!angle||angle<=0||angle>90)return;const sH=isTop?sH_top:sH_bottom;if(sH<=0)return;const r=Math.min(sR*0.4,20);const ltc=isTop?-90:90;const lts=isTop?Math.atan2(sR,sH)*180/Math.PI-90:90-Math.atan2(sR,sH)*180/Math.PI;const sX=vX+r*Math.cos(degToRad(lts)),sY=vY+r*Math.sin(degToRad(lts)),eX=vX+r*Math.cos(degToRad(ltc)),eY=vY+r*Math.sin(degToRad(ltc));createEl('path',{d:`M ${sX} ${sY} A ${r} ${r} 0 0 ${isTop?0:1} ${eX} ${eY}`,class:'angle-arc'});const tR=r+10,tA=degToRad(ltc+(lts-lts)/2),tX=vX+tR*Math.cos(tA),tY=vY+tR*Math.sin(tA),tAnc=isTop?'start':'end',aB=isTop?'auto':'hanging';addLabel(tX,tY,`α=${parseFloat(angle).toFixed(1)}°`,{'text-anchor':tAnc,'alignment-baseline':aB,class:'angle-text', 'font-size': (isForExport ? 14 : 14) + 'px'});};
+        
+        const offset = 28;
+        if(h_top_mm > 0) addLabel(x2 + offset, (y_top_edge + y_mid1) / 2, `Ht=${h_top_mm.toFixed(0)}`, { 'writing-mode': 'vertical-rl', 'text-anchor': 'middle' });
+        if(H_cyl_mm > 0) addLabel(x2 + offset, (y_mid1 + y_mid2) / 2, `Hs=${H_cyl_mm.toFixed(0)}`, { 'writing-mode': 'vertical-rl', 'text-anchor': 'middle' });
+        if(h_bottom_mm > 0 && !fillDataForExport.active) addLabel(x2 + offset, (y_mid2 + y_bot_head_tip) / 2, `Hb=${h_bottom_mm.toFixed(0)}`, { 'writing-mode': 'vertical-rl', 'text-anchor': 'middle' });
+        if(fillDataForExport.active){if(fillDataForExport.type==='sloped'){addLabel(x1-offset,y_mid2-s(fillDataForExport.h_min_mm/2),`h_min=${fillDataForExport.h_min_mm.toFixed(0)}`,{'writing-mode':'vertical-rl','text-anchor':'middle'});addLabel(x2+offset,y_mid2 -s(fillDataForExport.h_max_mm/2),`h_max=${fillDataForExport.h_max_mm.toFixed(0)}`,{'writing-mode':'vertical-rl','text-anchor':'middle'});}
+        else {addLabel(x2+offset,(y_mid2+(y_mid2-s(fillDataForExport.h_edge_mm)))/2,`h_e=${fillDataForExport.h_edge_mm.toFixed(0)}`,{'writing-mode':'vertical-rl', 'text-anchor':'middle'});addLabel(cx,y_mid2-s(fillDataForExport.h_center_mm)+18,`h_c=${fillDataForExport.h_center_mm.toFixed(0)}`);}}
+        if(h_support_mm > 0) addLabel(x1 - offset, (y_bot_head_tip + y_support_bottom)/2, `H_sup=${h_support_mm.toFixed(0)}`, { 'writing-mode': 'vertical-rl', 'text-anchor': 'middle' });
+        if(topHeadType === 'conical') drawAngleMarker(cx, y_top_edge, topHeadAngle, true); if (bottomHeadType === 'conical') drawAngleMarker(cx, y_bot_head_tip, bottomHeadAngle, false);
+        if(D_mm > 0){if(sH_cyl > 40){addLabel(cx, (y_mid1 + y_mid2) / 2, `DN=${D_mm}`, {'dominant-baseline':'middle'});}else{addLabel((x1+x2)/2, (h_support_mm > 0 ? y_support_bottom : y_bot_head_tip) + 22, `DN=${D_mm}`);}}
+    }
+
+    function update(event) { if (!isAuthorized) return;
+        const source=event?event.target:null;
+        if(source && source.id === 'topHeadType' && source.value === 'flat') { el.topHeadHeight.value = 0; }
+        if(source && source.id === 'bottomHeadType' && source.value === 'flat') { el.bottomHeadHeight.value = 0; }
+
+        let D_mm = parseFloat(el.diameter.value) || 0;
+        let R_mm = D_mm / 2;
+        let H_cyl_mm = parseFloat(el.cylHeight.value) || 0;
+        
+        if(source && source.id === 'topHeadType' && source.value === 'conical'){ el.topHeadAngle.value = 45; syncConicalInputs(el.topHeadHeight, el.topHeadAngle, 'angle'); }
+        if(source && (source.id === 'bottomHeadType')){ el.addFillCheck.checked = false; el.addSupportCheck.checked = false; if(source.value === 'conical'){ el.bottomHeadAngle.value = 45; syncConicalInputs(el.bottomHeadHeight, el.bottomHeadAngle, 'angle'); } }
+        
+        const handleUIVisibility=()=>{if(!isAuthorized)return;const isBottomNotFlat=el.bottomHeadType.value!=='flat';const isBottomFlat=el.bottomHeadType.value==='flat';el.supportOptions.style.display=isBottomNotFlat?'block':'none';if(isBottomNotFlat){const addSupport=el.addSupportCheck.checked;el.supportParameters.style.display=addSupport?'block':'none';}else{el.addSupportCheck.checked=false;}el.flatBottomOptions.style.display=isBottomFlat?'block':'none';if(isBottomFlat){const addFill=el.addFillCheck.checked;el.fillParameters.style.display=addFill?'block':'none';if(addFill){const fillType=el.fillType.value;el.slopeFillGroup.style.display=fillType==='sloped'?'block':'none';el.vShapeFillGroup.style.display=fillType==='v-shape'?'block':'none';}}['top','bottom'].forEach(pos=>{const typeEl=el[`${pos}HeadType`],heightGroup=el[`${pos}HeadHeightGroup`],conicalOptions=el[`${pos}ConicalOptions`],isConical=typeEl.value==='conical',isFlat=typeEl.value==='flat';heightGroup.style.display=isFlat?'none':'flex';conicalOptions.style.display=isConical?'block':'none';if(isConical){const mode=document.querySelector(`input[name="${pos}ConicalInputMode"]:checked`).value;heightGroup.style.display=mode==='height'?'flex':'none';el[`${pos}HeadAngleGroup`].style.display=mode==='angle'?'flex':'none';}});};
+        handleUIVisibility();
+        
+        if(source && (source.id === 'diameter' || source.id === 'slopeFillMin')){ el.slopeFillMax.value=(D_mm*0.075+parseFloat(el.slopeFillMin.value)).toFixed(0); }
+        if(source && source.id === 'diameter'){ el.vFillEdge.value=(D_mm*0.075).toFixed(0); el.supportHeight.value=(D_mm/2).toFixed(0); }
+        
+        function syncConicalInputs(heightInput, angleInput, triggeredBy){ if(!isAuthorized)return;R_mm = (parseFloat(el.diameter.value) || 0) / 2; if(R_mm<=0){heightInput.value=0;angleInput.value=0;return;};const angleVal=parseFloat(angleInput.value);if(angleVal>90){angleInput.value=90;}if(triggeredBy==='height'){const h=parseFloat(heightInput.value)||0;angleInput.value=h>0?radToDeg(Math.atan(R_mm/h)).toFixed(1):0;}else if(triggeredBy==='angle'){const angle=parseFloat(angleInput.value)||0;heightInput.value=(angle>0&&angle<=90)?(R_mm/Math.tan(degToRad(angle))).toFixed(0):0;}};
+        
+        const getHeadHeight=(type,heightInput,angleInput,modeName)=>{ if(!isAuthorized)return 0;R_mm = (parseFloat(el.diameter.value) || 0) / 2; if(type.value==='conical'){if(source===heightInput)syncConicalInputs(heightInput,angleInput,'height');else if(source===angleInput)syncConicalInputs(heightInput,angleInput,'angle');return parseFloat(heightInput.value)||0;}else{if((source&&['diameter',type.id].includes(source.id))&&type.value==='ellipsoidal'){heightInput.value=D_mm/4;}return parseFloat(heightInput.value)||0;}};
+        
+        const h_top_mm=getHeadHeight(el.topHeadType,el.topHeadHeight,el.topHeadAngle,'topConicalInputMode');
+        const h_bottom_mm=getHeadHeight(el.bottomHeadType,el.bottomHeadHeight,el.bottomHeadAngle,'bottomConicalInputMode');
+        const h_support_mm=(el.addSupportCheck.checked)?(parseFloat(el.supportHeight.value)||0):0;
+        
+        const D = D_mm / 1000, H_cyl = H_cyl_mm / 1000, R = D / 2;
+        const h_top = h_top_mm / 1000, h_bottom = h_bottom_mm / 1000;
+        
+        const topHead = calculateHead(D, h_top, el.topHeadType.value);
+        const bottomHead = calculateHead(D, h_bottom, el.bottomHeadType.value);
+        const cyl = { volume:Math.PI*R*R*H_cyl, area:Math.PI*D*H_cyl };
+        
+        let fillVolume=0, fillArea=0;
+        let fillDataForExport={active:false,volume:0,area:0};
+        if(el.bottomHeadType.value==='flat' && el.addFillCheck.checked){
+            if(el.fillType.value==='sloped'){
+                const h_min=parseFloat(el.slopeFillMin.value)/1000||0, h_max=parseFloat(el.slopeFillMax.value)/1000||0;
+                fillVolume=Math.PI*R*R*(h_min+h_max)/2;
+                fillArea=R>0?(Math.PI*R*R)/Math.cos(Math.atan((h_max-h_min)/(2*R))):0;
+                fillDataForExport={active:true,type:'sloped',h_min_mm:h_min*1000,h_max_mm:h_max*1000,volume:fillVolume,area:fillArea};
+            } else {
+                const h_edge=parseFloat(el.vFillEdge.value)/1000||0, h_center=parseFloat(el.vFillCenter.value)/1000||0;
+                fillVolume=(1/3)*Math.PI*R*R*(2*h_edge+h_center);
+                fillArea=R>0?Math.PI*R*Math.sqrt(R*R+(h_edge-h_center)**2):0;
+                fillDataForExport={active:true,type:'v-shape',h_edge_mm:h_edge*1000,h_center_mm:h_center*1000,volume:fillVolume,area:fillArea};
+            }
+        }
+        
+        const geometricTotalVolume=(bottomHead.volume+cyl.volume+topHead.volume)-fillVolume;
+        const effectiveVolumeValue=(bottomHead.volume+cyl.volume)-fillVolume;
+        const emptyWeight_kg=parseFloat(el.emptyWeightInput.value)||0;
+        const mediumDensity_kg_m3=parseFloat(el.mediumDensity.value)||0;
+        const waterDensity_kg_m3=1000;
+        const operatingWeight_kg=effectiveVolumeValue*mediumDensity_kg_m3+emptyWeight_kg;
+        const fullWaterWeight_kg=geometricTotalVolume*waterDensity_kg_m3+emptyWeight_kg;
+        const totalSurfaceArea=topHead.area+cyl.area+bottomHead.area+fillArea;
+        
+        const formatVol=(val,precision)=>`${val.toFixed(precision)} m³`;
+        const formatWeight=(val)=>`${(Math.round(val/10)*10).toFixed(0)} kg`;
+        el.effectiveVolume.textContent=formatVol(effectiveVolumeValue,2);
+        el.emptyWeight.textContent=formatWeight(emptyWeight_kg);
+        el.operatingWeight.textContent=formatWeight(operatingWeight_kg);
+        el.fullWeight.textContent=formatWeight(fullWaterWeight_kg);
+        
+        el.effectiveVolumeNote.innerHTML=`V<sub>有效</sub> = V<sub>封底</sub> + V<sub>筒体</sub>${fillVolume>0?' - V<sub>填充</sub>':''}`;
+        const geoVolNote=fillVolume>0?'V=(V<sub>封底</sub>+V<sub>筒体</sub>+V<sub>封头</sub>)-V<sub>填充</sub>':'V=V<sub>封底</sub>+V<sub>筒体</sub>+V<sub>封头</sub>';
+        const totalAreaNote=fillArea>0?'A=A<sub>封头</sub>+A<sub>筒体</sub>+A<sub>封底</sub>+A<sub>填充</sub>':'A=A<sub>封头</sub>+A<sub>筒体</sub>+A<sub>封底</sub>';
+        const formulas_data={volume:{ellipsoidal:'<i>V</i> = 2/3π(<i>DN</i>/2)² × <i>H</i>',conical:'<i>V</i> = 1/3π(<i>DN</i>/2)² × <i>H</i>',flat:'<i>V</i> = 0'},area:{ellipsoidal:'<i>A</i> ≈ π/4[<i>DN</i>²+2<i>H</i>²·ln((<i>DN</i>+√(<i>DN</i>²-4<i>H</i>²))/2<i>H</i>)]',conical:'<i>A</i> = π(<i>DN</i>/2)√(<i>DN</i>/2)²+<i>H</i>²',flat:'<i>A</i> = π(<i>DN</i>/2)²'}};
+        document.getElementById('geometry-section-placeholder').innerHTML=`<h3>几何参数计算</h3><div class="result-item"><div class="result-row"><div class="result-value"><span>几何总容积:</span><strong id="totalVolume">${formatVol(geometricTotalVolume,2)}</strong></div></div><div class="note">${geoVolNote}</div></div><hr style="margin:5px 0;"><div class="result-item"><div class="result-row"><div class="result-value"><span>封头容积:</span><strong>${formatVol(topHead.volume,2)}</strong></div><div class="formula-col">${formulas_data.volume[el.topHeadType.value].replace('<i>H</i>','<i>H</i><sub>t</sub>')}</div></div></div><div class="result-item"><div class="result-row"><div class="result-value"><span>筒体容积:</span><strong>${formatVol(cyl.volume,2)}</strong></div><div class="formula-col"><i>V</i> = π(<i>DN</i>/2)² × <i>H</i><sub>s</sub></div></div></div><div class="result-item"><div class="result-row"><div class="result-value"><span>封底容积:</span><strong>${formatVol(bottomHead.volume,2)}</strong></div><div class="formula-col">${formulas_data.volume[el.bottomHeadType.value].replace('<i>H</i>','<i>H</i><sub>b</sub>')}</div></div></div> ${fillVolume>0?`<div class="result-item"><div class="result-row"><div class="result-value"><span>填充物体积:</span><strong>${formatVol(fillVolume,2)}</strong></div></div></div>`:''} <hr><h3>内表面积</h3><div class="result-item"><div class="result-row"><div class="result-value"><span>总内表面积:</span><strong>${formatVol(totalSurfaceArea,2).replace('m³','m²')}</strong></div></div><div class="note">${totalAreaNote}</div></div><div class="result-item"><div class="result-row"><div class="result-value"><span>封头:</span><strong>${formatVol(topHead.area,2).replace('m³','m²')}</strong></div><div class="formula-col">${formulas_data.area[el.topHeadType.value].replace('<i>H</i>','<i>H</i><sub>t</sub>')}</div></div></div><div class="result-item"><div class="result-row"><div class="result-value"><span>筒体:</span><strong>${formatVol(cyl.area,2).replace('m³','m²')}</strong></div><div class="formula-col"><i>A</i> = π × <i>DN</i> × <i>H</i><sub>s</sub></div></div></div><div class="result-item"><div class="result-row"><div class="result-value"><span>封底:</span><strong>${formatVol(bottomHead.area,2).replace('m³','m²')}</strong></div><div class="formula-col">${formulas_data.area[el.bottomHeadType.value].replace('<i>H</i>','<i>H</i><sub>b</sub>')}</div></div></div> ${fillArea>0?`<div class="result-item"><div class="result-row"><div class="result-value"><span>填充物上表面积:</span><strong>${formatVol(fillArea,2).replace('m³','m²')}</strong></div></div></div>`:''}`;
+
+        const drawingParams = {
+            geometry: { D_mm, H_cyl_mm, h_top_mm, h_bottom_mm, h_support_mm, fillDataForExport },
+            ui: { 
+                topHeadType: el.topHeadType.value,
+                bottomHeadType: el.bottomHeadType.value,
+                topHeadAngle: el.topHeadAngle.value,
+                bottomHeadAngle: el.bottomHeadAngle.value,
+                supportType: el.supportType.value,
+                addSupportCheck: el.addSupportCheck.checked,
+                addRailingCheck: el.addRailingCheck.checked,
+                addLadderCheck: el.addLadderCheck.checked
+            }
+        };
+
+        if (D_mm > 0 || H_cyl_mm > 0) { 
+            el.exportButton.disabled = false;
+            lastExportData = {
+                ...drawingParams,
+                calculation: {
+                    emptyWeight_kg, mediumDensity_kg_m3, effectiveVolumeValue, geometricTotalVolume, operatingWeight_kg, fullWaterWeight_kg, totalSurfaceArea,
+                    topHead, cyl, bottomHead
+                }
+            };
+            drawTankDiagram(el.tankSvg, drawingParams, { width: 300, height: 400 });
+        } else { 
+            el.exportButton.disabled = true;
+            lastExportData = null;
+            el.tankSvg.innerHTML = '';
+        }
+    }
+    
+    async function exportToExcel() { if (!isAuthorized) return;
+        if(!lastExportData) return;
+        const workbook=new ExcelJS.Workbook();
+        const worksheet=workbook.addWorksheet('计算结果');
+        const d = lastExportData.calculation;
+        const ui = lastExportData.ui;
+        const geo = lastExportData.geometry;
+        const typeMap={'ellipsoidal':'椭球封头','conical':'锥形封头','flat':'平封底'};
+        const sections=[{title:"输入参数",data:[["公称直径 (DN)",geo.D_mm,"mm"],["筒体高度 (Hs)",geo.H_cyl_mm,"mm"],["封头类型",typeMap[ui.topHeadType]||"",""],["封头高度 (Ht)",Number(geo.h_top_mm.toFixed(0)),"mm"],ui.topHeadType==='conical'?["封头锥顶半角 (α)",Number(parseFloat(ui.topHeadAngle).toFixed(1)),"°"]:null,["封底类型",typeMap[ui.bottomHeadType]||"",""],ui.bottomHeadType==='flat'?null:["封底高度 (Hb)",geo.h_bottom_mm.toFixed(0),"mm"],ui.bottomHeadType==='conical'?["封底锥顶半角 (α)",parseFloat(ui.bottomHeadAngle).toFixed(1),"°"]:null,geo.fillDataForExport.active?["填充类型",geo.fillDataForExport.type==='sloped'?'内斜底填充':'V型填充',""]:null,geo.fillDataForExport.active&&geo.fillDataForExport.type==='sloped'?["h_min",geo.fillDataForExport.h_min_mm,"mm"]:null,geo.fillDataForExport.active&&geo.fillDataForExport.type==='sloped'?["h_max",Number(geo.fillDataForExport.h_max_mm).toFixed(0),"mm"]:null,geo.fillDataForExport.active&&geo.fillDataForExport.type==='v-shape'?["h_e",Number(geo.fillDataForExport.h_edge_mm).toFixed(0),"mm"]:null,geo.fillDataForExport.active&&geo.fillDataForExport.type==='v-shape'?["h_c",geo.fillDataForExport.h_center_mm,"mm"]:null,ui.addSupportCheck?["支座类型",ui.supportType==='legs'?'支腿':'裙座',""]:null,ui.addSupportCheck?["支座高度 (H_sup)",geo.h_support_mm,"mm"]:null, ui.addRailingCheck?["是否添加护栏","是",""]:null, ui.addLadderCheck?["是否添加爬梯","是",""]:null,["空罐重量",d.emptyWeight_kg,"kg"],["介质密度",d.mediumDensity_kg_m3,"kg/m³"],]},{title:"计算结果",data:[["有效体积",d.effectiveVolumeValue,"m³"],["几何总容积",d.geometricTotalVolume,"m³"],["运行重量",d.operatingWeight_kg,"kg"],["满水重量",d.fullWaterWeight_kg,"kg"]]},{title:"分项明细",data:[["封头容积",d.topHead.volume,"m³"],["筒体容积",d.cyl.volume,"m³"],["封底容积",d.bottomHead.volume,"m³"],geo.fillDataForExport.active?["填充物体积",geo.fillDataForExport.volume,"m³"]:null,["总内表面积",d.totalSurfaceArea,"m²"],["封头内表面积",d.topHead.area,"m²"],["筒体内表面积",d.cyl.area,"m²"],["封底内表面积",d.bottomHead.area,"m²"],geo.fillDataForExport.active?["填充物上表面积",geo.fillDataForExport.area,"m²"]:null]}].map(s=>({...s,data:s.data.filter(Boolean)}));
+        const thinBorder={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};worksheet.columns=[{width:22},{width:30},{width:15},{width:12}];const headerRow=worksheet.addRow(["项目类别","参数","数值","单位"]);headerRow.eachCell(cell=>{cell.style={font:{name:'Calibri',bold:true,size:14,color:{argb:'FFFFFFFF'}},fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF0D47A1'}},alignment:{vertical:'middle',horizontal:'center'},border:thinBorder};});headerRow.height=25;sections.forEach(section=>{if(section.data.length===0)return;worksheet.addRow([]);const startRow=worksheet.lastRow.number+1;section.data.forEach(rowData=>worksheet.addRow(['',...rowData]));const endRow=worksheet.lastRow.number;worksheet.mergeCells(`A${startRow}:A${endRow}`);const titleCell=worksheet.getCell(`A${startRow}`);titleCell.value=section.title;titleCell.style={font:{name:'Calibri',bold:true,size:12},fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FFB3E5FC'}},alignment:{vertical:'middle',horizontal:'center',wrapText:true},border:thinBorder};for(let i=startRow;i<=endRow;i++){const row=worksheet.getRow(i);row.height=20;row.eachCell({includeEmpty:true},(cell,colNumber)=>{if(!cell.border)cell.border=thinBorder;cell.font={name:'Calibri',size:11};if(colNumber===2)cell.alignment={vertical:'middle',horizontal:'left',indent:1};else cell.alignment={vertical:'middle',horizontal:'center'};if(colNumber===3&&typeof cell.value==='number'){const paramName=row.getCell(2).value;if(String(paramName).includes('面积')||String(paramName).includes('体积')||String(paramName).includes('容积'))cell.numFmt='0.00';else cell.numFmt='0';}})}});
+        
+        const exportScaleFactor = 1.5;
+        const exportWidth = 300 * exportScaleFactor;
+        const exportHeight = 400 * exportScaleFactor;
+        
+        const tempSvg = document.createElementNS(ns, 'svg');
+        tempSvg.setAttribute('width', exportWidth);
+        tempSvg.setAttribute('height', exportHeight);
+        tempSvg.style.backgroundColor = 'white';
+
+        drawTankDiagram(tempSvg, lastExportData, { width: exportWidth, height: exportHeight }, true);
+
+        const svgString = new XMLSerializer().serializeToString(tempSvg);
+        const canvas = document.createElement('canvas');
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = exportWidth * dpr;
+        canvas.height = exportHeight * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const img = new Image();
+        const imgPromise = new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+
+        try {
+            await imgPromise;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, exportWidth, exportHeight);
+            const imageBase64 = canvas.toDataURL('image/png');
+            const imageId = workbook.addImage({ base64: imageBase64, extension: 'png' });
+            
+            worksheet.addImage(imageId, {
+                tl: { col: 5, row: 1 },
+                ext: { width: exportWidth, height: exportHeight }
+            });
+        } catch (e) {
+            console.error("Error during image processing for Excel export", e);
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), "储罐尺寸及介质重量计算.xlsx");
+    }
+    
+    // 绑定所有事件
+    document.querySelectorAll("input, select, [type='checkbox']").forEach(input => input.addEventListener('input', update));
+    el.exportButton.addEventListener('click', exportToExcel);
+</script>
+</body>
+</html>
